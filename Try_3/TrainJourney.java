@@ -62,7 +62,9 @@ public class TrainJourney {
         for (String currentStation : stationsList) {
             clearScreen();
             System.out.println("Train arrived at: " + currentStation);
-            updateTrainPassengers(currentStation);
+            loadPassengerData();  // Load passenger data at each station to check for updates
+            dispatchPassengers(currentStation);
+            boardNewPassengers(currentStation);
             showTrainPassengers();
             pressEnterToContinue();
         }
@@ -87,41 +89,34 @@ public class TrainJourney {
         }
     }
 
-    private static void updateTrainPassengers(String currentStation) {
-        boolean passengersBoarded = false;
-
-        do {
-            passengersBoarded = false;
-            loadPassengerData();  // Load passenger data at each station to check for updates
-            
-            // Add passengers whose onboarding station matches the current station
-            Iterator<Passenger> iterator = passengerList.iterator();
-            while (iterator.hasNext()) {
-                Passenger passenger = iterator.next();
-                if (passenger.getOnboard_station().equals(currentStation)) {
-                    if (trainPassengerList.size() < trainCapacity) {
-                        trainPassengerList.add(passenger);
-                        iterator.remove();
-                        System.out.println("Passenger boarded: " + passenger);
-                        passengersBoarded = true;
-                    } else {
-                        System.out.println("Train is at full capacity. Passenger could not board: " + passenger);
-                    }
-                }
+    private static void dispatchPassengers(String currentStation) {
+        // Remove passengers whose destination station matches the current station
+        Iterator<Passenger> iterator = trainPassengerList.iterator();
+        while (iterator.hasNext()) {
+            Passenger passenger = iterator.next();
+            if (passenger.getDestination_station().equals(currentStation)) {
+                iterator.remove();
+                System.out.println("Passenger alighted: " + passenger);
             }
+        }
+    }
 
-            // Remove passengers whose destination station matches the current station
-            iterator = trainPassengerList.iterator();
-            while (iterator.hasNext()) {
-                Passenger passenger = iterator.next();
-                if (passenger.getDestination_station().equals(currentStation)) {
+    private static void boardNewPassengers(String currentStation) {
+        // Add passengers whose onboarding station matches the current station
+        Iterator<Passenger> iterator = passengerList.iterator();
+        while (iterator.hasNext()) {
+            Passenger passenger = iterator.next();
+            if (passenger.getOnboard_station().equals(currentStation)) {
+                if (trainPassengerList.size() < trainCapacity) {
+                    trainPassengerList.add(passenger);
                     iterator.remove();
-                    System.out.println("Passenger alighted: " + passenger);
+                    System.out.println("Passenger boarded: " + passenger);
+                } else {
+                    System.out.println("Train is at full capacity. Passenger could not board: " + passenger);
                 }
             }
-
-            updatePassengerFile();
-        } while (passengersBoarded); // Re-check for new passengers if any boarded in the last cycle
+        }
+        updatePassengerFile();
     }
 
     private static void showTrainPassengers() {
