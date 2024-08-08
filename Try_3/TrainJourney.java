@@ -4,72 +4,65 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-
-class Passenger {
-    private String passenger_name;
-    private int ticket_number;
-    private int train_number;
-    private String onboard_station;
-    private String destination_station;
-
-    public Passenger(String passenger_name, int ticket_number, int train_number, String onboard_station, String destination_station) {
-        this.passenger_name = passenger_name;
-        this.ticket_number = ticket_number;
-        this.train_number = train_number;
-        this.onboard_station = onboard_station;
-        this.destination_station = destination_station;
-    }
-
-    public String getPassenger_name() {
-        return passenger_name;
-    }
-
-    public int getTicket_number() {
-        return ticket_number;
-    }
-
-    public String getOnboard_station() {
-        return onboard_station;
-    }
-
-    public String getDestination_station() {
-        return destination_station;
-    }
-
-    @Override
-    public String toString() {
-        return passenger_name + " (Ticket Number: " + ticket_number + ", Onboard Station: " + onboard_station + ", Destination Station: " + destination_station + ")";
-    }
-}
+import java.util.Map;
 
 public class TrainJourney {
     static List<Passenger> passengerList = new ArrayList<>();
-    static List<Passenger> trainPassengerList = new ArrayList<>();
+    static Map<Integer, List<String>> trainJourneys = new HashMap<>();
+    static Map<Integer, Integer> trainCapacities = new HashMap<>();
     static String filePath = "passenger_data.txt";
-    static int trainCapacity = 2;
+    static String journeyFilePath = "train_journey_details.txt";
 
     public static void main(String[] args) {
-        ArrayList<String> stationsList = new ArrayList<>();
-        stationsList.add("Chennai");
-        stationsList.add("Bangalore");
-        stationsList.add("Mumbai");
-        stationsList.add("Delhi");
-        stationsList.add("Kolkata");
-        stationsList.add("Hyderabad");
+        // Load train journeys and capacities
+        loadTrainJourneys();
 
-        for (String currentStation : stationsList) {
-            clearScreen();
-            System.out.println("Train arrived at: " + currentStation);
-            loadPassengerData();  // Load passenger data at each station to check for updates
-            dispatchPassengers(currentStation);
-            boardNewPassengers(currentStation);
-            showTrainPassengers();
-            pressEnterToContinue();
+        // Process each train
+        for (Map.Entry<Integer, List<String>> entry : trainJourneys.entrySet()) {
+            int trainNumber = entry.getKey();
+            List<String> stationsList = entry.getValue();
+            int trainCapacity = trainCapacities.getOrDefault(trainNumber, 10);
+
+            List<Passenger> trainPassengerList = new ArrayList<>();
+            System.out.println("Processing Train Number: " + trainNumber);
+
+            for (String currentStation : stationsList) {
+                clearScreen();
+                System.out.println("Train " + trainNumber + " arrived at: " + currentStation);
+                loadPassengerData();  // Load passenger data at each station to check for updates
+                dispatchPassengers(currentStation, trainPassengerList);
+                boardNewPassengers(currentStation, trainPassengerList, trainCapacity);
+                showTrainPassengers(trainPassengerList);
+                pressEnterToContinue();
+            }
+
+            System.out.println("Journey for Train Number " + trainNumber + " completed.");
         }
 
-        System.out.println("Journey completed. Thank you for using the Train Journey system.");
+        System.out.println("All journeys completed. Thank you for using the Train Journey system.");
+    }
+
+    private static void loadTrainJourneys() {
+        try (BufferedReader reader = new BufferedReader(new FileReader(journeyFilePath))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(";");
+                int trainNumber = Integer.parseInt(parts[0]);
+                String[] stations = parts[1].split(",");
+                List<String> stationList = new ArrayList<>();
+                for (String station : stations) {
+                    stationList.add(station);
+                }
+                trainJourneys.put(trainNumber, stationList);
+                trainCapacities.put(trainNumber, 10); // Default capacity; adjust if needed
+            }
+        } catch (IOException e) {
+            System.out.println("An error occurred while loading train journey details.");
+            e.printStackTrace();
+        }
     }
 
     private static void loadPassengerData() {
@@ -78,8 +71,8 @@ public class TrainJourney {
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",");
-                if (parts.length == 4) {
-                    Passenger passenger = new Passenger(parts[0], Integer.parseInt(parts[1]), 0, parts[2], parts[3]);
+                if (parts.length == 6) {
+                    Passenger passenger = new Passenger(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), parts[3], parts[4], Integer.parseInt(parts[5]));
                     passengerList.add(passenger);
                 }
             }
@@ -89,7 +82,7 @@ public class TrainJourney {
         }
     }
 
-    private static void dispatchPassengers(String currentStation) {
+    private static void dispatchPassengers(String currentStation, List<Passenger> trainPassengerList) {
         // Remove passengers whose destination station matches the current station
         Iterator<Passenger> iterator = trainPassengerList.iterator();
         while (iterator.hasNext()) {
@@ -101,13 +94,13 @@ public class TrainJourney {
         }
     }
 
-    private static void boardNewPassengers(String currentStation) {
+    private static void boardNewPassengers(String currentStation, List<Passenger> trainPassengerList, int trainCapacity) {
         // Add passengers whose onboarding station matches the current station
         Iterator<Passenger> iterator = passengerList.iterator();
         while (iterator.hasNext()) {
             Passenger passenger = iterator.next();
             if (passenger.getOnboard_station().equals(currentStation)) {
-                if (trainPassengerList.size() < trainCapacity) {
+                if (getTotalPassengers(trainPassengerList) + passenger.getFamilySize() <= trainCapacity) {
                     trainPassengerList.add(passenger);
                     iterator.remove();
                     System.out.println("Passenger boarded: " + passenger);
@@ -119,7 +112,28 @@ public class TrainJourney {
         updatePassengerFile();
     }
 
-    private static void showTrainPassengers() {
+    private static int getTotalPassengers(List<Passenger> trainPassengerList) {
+        // Calculate the total number of passengers currently on the train
+        int total = 0;
+        for (Passenger passenger : trainPassengerList) {
+            total += passenger.getFamilySize();
+        }
+        return total;
+    }
+
+    private static void updatePassengerFile() {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+            for (Passenger passenger : passengerList) {
+                writer.write(passenger.getPassenger_name() + "," + passenger.getTicket_number() + "," + passenger.getTrain_number() + "," + passenger.getOnboard_station() + "," + passenger.getDestination_station() + "," + passenger.getFamilySize());
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            System.out.println("An error occurred while updating passenger data.");
+            e.printStackTrace();
+        }
+    }
+
+    private static void showTrainPassengers(List<Passenger> trainPassengerList) {
         System.out.println("\nPassengers currently on the train:");
         if (trainPassengerList.isEmpty()) {
             System.out.println("No passengers on the train.");
@@ -127,18 +141,6 @@ public class TrainJourney {
             for (Passenger passenger : trainPassengerList) {
                 System.out.println(passenger);
             }
-        }
-    }
-
-    private static void updatePassengerFile() {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-            for (Passenger passenger : passengerList) {
-                writer.write(passenger.getPassenger_name() + "," + passenger.getTicket_number() + "," + passenger.getOnboard_station() + "," + passenger.getDestination_station());
-                writer.newLine();
-            }
-        } catch (IOException e) {
-            System.out.println("An error occurred while updating passenger data.");
-            e.printStackTrace();
         }
     }
 

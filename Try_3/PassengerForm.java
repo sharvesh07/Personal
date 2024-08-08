@@ -6,43 +6,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Scanner;
 
-class Passenger {
-    private String passenger_name;
-    private int ticket_number;
-    private int train_number;
-    private String onboard_station;
-    private String destination_station;
-
-    public Passenger(String passenger_name, int ticket_number, int train_number, String onboard_station, String destination_station) {
-        this.passenger_name = passenger_name;
-        this.ticket_number = ticket_number;
-        this.train_number = train_number;
-        this.onboard_station = onboard_station;
-        this.destination_station = destination_station;
-    }
-
-    public String getPassenger_name() {
-        return passenger_name;
-    }
-
-    public int getTicket_number() {
-        return ticket_number;
-    }
-
-    public String getOnboard_station() {
-        return onboard_station;
-    }
-
-    public String getDestination_station() {
-        return destination_station;
-    }
-
-    @Override
-    public String toString() {
-        return passenger_name + " (Ticket Number: " + ticket_number + ", Onboard Station: " + onboard_station + ", Destination Station: " + destination_station + ")";
-    }
-}
-
 public class PassengerForm {
     static List<Passenger> passengerList = new ArrayList<>();
     static String filePath = "passenger_data.txt";
@@ -56,14 +19,14 @@ public class PassengerForm {
             clearScreen();
             showMenu();
             choice = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
+            scanner.nextLine(); // Consume newlines
 
             switch (choice) {
                 case 1:
-                    createNewTicket();
+                    createNewTickets();
                     break;
                 case 2:
-                    cancelTicket();
+                    cancelTickets();
                     break;
                 case 3:
                     showPassengerList();
@@ -81,15 +44,17 @@ public class PassengerForm {
     }
 
     private static void showMenu() {
-        System.out.println("1. Book a ticket");
-        System.out.println("2. Cancel a ticket");
+        System.out.println("1. Book tickets");
+        System.out.println("2. Cancel tickets");
         System.out.println("3. Show passenger list");
         System.out.println("4. Exit");
         System.out.print("Enter your choice: ");
     }
 
-    private static void createNewTicket() {
+    private static void createNewTickets() {
         clearScreen();
+        System.out.println("Booking tickets for a family:-1");
+
         System.out.print("Enter passenger name: ");
         String passengerName = scanner.nextLine();
 
@@ -103,18 +68,23 @@ public class PassengerForm {
         System.out.print("Enter destination station: ");
         String destinationStation = scanner.nextLine();
 
+        System.out.print("Enter family size: ");
+        int familySize = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
         lastTicketNumber++;
-        Passenger passenger = new Passenger(passengerName, lastTicketNumber, trainNumber, onboardStation, destinationStation);
+        Passenger passenger = new Passenger(passengerName, lastTicketNumber, trainNumber, onboardStation, destinationStation, familySize);
         passengerList.add(passenger);
         savePassengerData(passenger);
 
-        System.out.println("Ticket booked successfully. Ticket Number: " + lastTicketNumber);
+        System.out.println("Tickets booked successfully for " + familySize + " person(s). Ticket Number: " + lastTicketNumber);
     }
 
-    private static void cancelTicket() {
+    private static void cancelTickets() {
         clearScreen();
         System.out.print("Enter ticket number to cancel: ");
         int ticketNumber = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
 
         Iterator<Passenger> iterator = passengerList.iterator();
         boolean found = false;
@@ -122,7 +92,7 @@ public class PassengerForm {
             Passenger passenger = iterator.next();
             if (passenger.getTicket_number() == ticketNumber) {
                 iterator.remove();
-                System.out.println("Ticket canceled successfully.");
+                System.out.println("Ticket for " + passenger.getFamilySize() + " person(s) canceled successfully.");
                 found = true;
                 break;
             }
@@ -148,7 +118,7 @@ public class PassengerForm {
 
     private static void savePassengerData(Passenger passenger) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
-            writer.write(passenger.getPassenger_name() + "," + passenger.getTicket_number() + "," + passenger.getOnboard_station() + "," + passenger.getDestination_station());
+            writer.write(passenger.getPassenger_name() + "," + passenger.getTicket_number() + "," + passenger.getTrain_number() + "," + passenger.getOnboard_station() + "," + passenger.getDestination_station() + "," + passenger.getFamilySize());
             writer.newLine();
         } catch (IOException e) {
             System.out.println("An error occurred while saving passenger data.");
@@ -159,7 +129,7 @@ public class PassengerForm {
     private static void updatePassengerFile() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
             for (Passenger passenger : passengerList) {
-                writer.write(passenger.getPassenger_name() + "," + passenger.getTicket_number() + "," + passenger.getOnboard_station() + "," + passenger.getDestination_station());
+                writer.write(passenger.getPassenger_name() + "," + passenger.getTicket_number() + "," + passenger.getTrain_number() + "," + passenger.getOnboard_station() + "," + passenger.getDestination_station() + "," + passenger.getFamilySize());
                 writer.newLine();
             }
         } catch (IOException e) {
