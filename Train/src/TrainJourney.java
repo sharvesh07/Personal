@@ -1,22 +1,27 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 public class TrainJourney {
-    static List<Passenger> passengerList = new ArrayList<>();
-    static List<Train> trains = new ArrayList<>();
-    static List<Passenger> trainPassengerList = new ArrayList<>();
-    static String filePath = "passenger_data.txt";
-    static String journeyFilePath = "train_journey_details.txt";
+
+    private List<Passenger> passengerList = new ArrayList<>();
+    private List<Train> trains = new ArrayList<>();
+    private List<Passenger> trainPassengerList = new ArrayList<>();
+    private String filePath = "passenger_data.txt";
+    private String journeyFilePath = "train_journey_details.txt";
+    private int nextTicketNumber = 1;
 
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        loadTrainJourneys();
+        TrainJourney journey = new TrainJourney();
+        journey.loadTrainJourneys();
+        journey.loadPassengerData();
 
+        journey.run();
+    }
+
+    private void run() {
+        Scanner scanner = new Scanner(System.in);
         boolean continueJourney = true;
+
         while (continueJourney) {
             System.out.println("\nAvailable trains:");
             for (Train train : trains) {
@@ -39,13 +44,15 @@ public class TrainJourney {
             }
 
             if (train.move()) {
-                String currentStation = train.getCurrentStation();
+                String previousStation = train.getPreviousStation();  // Get the previous station before moving
+                dispatchPassengers(previousStation);  // Alight passengers at the previous station
+
+                String currentStation = train.getCurrentStation();  // Move the train and get the new station
                 System.out.println("Train " + trainNumber + " moved to station: " + currentStation +
                         " (Direction: " + (train.isMovingForward() ? "Forward" : "Backward") + ")");
-                loadPassengerData();  // Load passenger data to check for updates
-                dispatchPassengers(currentStation);
-                boardNewPassengers(currentStation, trainNumber, train.isMovingForward());
-                showTrainPassengers();
+
+                boardNewPassengers(currentStation, trainNumber, train.isMovingForward());  // Board passengers at the current station
+                showTrainPassengers();  // Show the list of passengers currently on the train
             } else {
                 System.out.println("Train " + trainNumber + " has reached its final destination.");
             }
@@ -57,42 +64,69 @@ public class TrainJourney {
         scanner.close();
     }
 
-    private static void loadTrainJourneys() {
+    private void loadTrainJourneys() {
         try (BufferedReader reader = new BufferedReader(new FileReader(journeyFilePath))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(";");
-                int trainNumber = Integer.parseInt(parts[0]);
-                String[] stations = parts[1].split(",");
-                List<String> stationList = new ArrayList<>(Arrays.asList(stations));
-                int trainCapacity = Integer.parseInt(parts[2]);
-                Train train = new Train(trainNumber, stationList, trainCapacity);
-                trains.add(train);
-            }
-        } catch (IOException e) {
-            System.out.println("An error occurred while loading train journey details.");
-            e.printStackTrace();
-        }
-    }
-
-    private static void loadPassengerData() {
-        passengerList.clear(); // Clear the existing passenger list before loading
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 6) {
-                    Passenger passenger = new Passenger(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), parts[3], parts[4], Integer.parseInt(parts[5]));
-                    passengerList.add(passenger);
+                if (parts.length == 3) {
+                    try {
+                        int trainNumber = Integer.parseInt(parts[0]);
+                        String[] stations = parts[1].split(",");
+                        List<String> stationList = new ArrayList<>(Arrays.asList(stations));
+                        int trainCapacity = Integer.parseInt(parts[2]);
+                        Train train = new Train(trainNumber, stationList, trainCapacity);
+                        trains.add(train);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid format in train journey details: " + e.getMessage());
+                    }
+                } else {
+                    System.err.println("Invalid format in train journey details.");
                 }
             }
         } catch (IOException e) {
-            System.out.println("An error occurred while loading passenger data.");
+            System.err.println("An error occurred while loading train journey details.");
             e.printStackTrace();
         }
     }
 
-    private static void dispatchPassengers(String currentStation) {
+    private void loadPassengerData() {
+        passengerList.clear(); // Clear the existing passenger list before loading
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            int maxTicketNumber = 0; // Track the highest ticket number
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(";");
+                if (parts.length == 6) {
+                    try {
+                        Passenger passenger = new Passenger(
+                                parts[0],
+                                Integer.parseInt(parts[1]),
+                                Integer.parseInt(parts[2]),
+                                parts[3],
+                                parts[4],
+                                Integer.parseInt(parts[5])
+                        );
+                        passengerList.add(passenger);
+                        //trainPassengerList.add(passenger);
+                        if (passenger.getTicket_number() > maxTicketNumber) {
+                            maxTicketNumber = passenger.getTicket_number(); // Update max ticket number
+                        }
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid number format in passenger data: " + e.getMessage());
+                    }
+                } else {
+                    System.err.println("Invalid format in passenger data.");
+                }
+            }
+            nextTicketNumber = maxTicketNumber + 1; // Initialize the next ticket number
+        } catch (IOException e) {
+            System.err.println("An error occurred while loading passenger data.");
+            e.printStackTrace();
+        }
+    }
+
+    private void dispatchPassengers(String currentStation) {
         Iterator<Passenger> iterator = trainPassengerList.iterator();
         while (iterator.hasNext()) {
             Passenger passenger = iterator.next();
@@ -103,7 +137,7 @@ public class TrainJourney {
         }
     }
 
-    private static void boardNewPassengers(String currentStation, int trainNumber, boolean movingForward) {
+    private void boardNewPassengers(String currentStation, int trainNumber, boolean movingForward) {
         Train train = findTrainByNumber(trainNumber);
         if (train == null) {
             System.out.println("Train not found.");
@@ -113,10 +147,10 @@ public class TrainJourney {
         Iterator<Passenger> iterator = passengerList.iterator();
         while (iterator.hasNext()) {
             Passenger passenger = iterator.next();
+            //System.out.println("*");
             if (passenger.getOnboard_station().equals(currentStation)) {
                 if (movingForward) {
-                    // Move forward only if the station index matches or is before current station
-                    if (train.getStations().indexOf(passenger.getOnboard_station()) <= train.getCurrentStationIndex()) {
+                    if (train.canPassengerCompleteJourney(passenger)) {
                         if (getTotalPassengers(trainNumber) + passenger.getFamilySize() <= train.getCapacity()) {
                             trainPassengerList.add(passenger);
                             iterator.remove();
@@ -124,47 +158,37 @@ public class TrainJourney {
                         } else {
                             System.out.println("Train is at full capacity. Passenger could not board: " + passenger);
                         }
+                    } else {
+                        System.out.println("Passenger's journey is not feasible: " + passenger);
                     }
                 } else {
-                    // Move backward only if the station index matches or is after current station
-                    if (train.getStations().indexOf(passenger.getOnboard_station()) >= train.getCurrentStationIndex()) {
-                        if (getTotalPassengers(trainNumber) + passenger.getFamilySize() <= train.getCapacity()) {
-                            trainPassengerList.add(passenger);
-                            iterator.remove();
-                            System.out.println("Passenger boarded: " + passenger);
-                        } else {
-                            System.out.println("Train is at full capacity. Passenger could not board: " + passenger);
-                        }
-                    }
+                    // Handle backward direction
+                    System.out.println("Handling backward direction (not yet implemented).");
                 }
             }
         }
         updatePassengerFile();
     }
 
-    private static int getTotalPassengers(int trainNumber) {
-        int total = 0;
-        for (Passenger passenger : trainPassengerList) {
-            if (passenger.getTrain_number() == trainNumber) {
-                total += passenger.getFamilySize();
-            }
-        }
-        return total;
-    }
-
-    private static void updatePassengerFile() {
+    private void updatePassengerFile() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
             for (Passenger passenger : passengerList) {
-                writer.write(passenger.getPassenger_name() + "," + passenger.getTicket_number() + "," + passenger.getTrain_number() + "," + passenger.getOnboard_station() + "," + passenger.getDestination_station() + "," + passenger.getFamilySize());
+                writer.write(String.join(";",
+                        passenger.getPassenger_name(),
+                        String.valueOf(passenger.getTicket_number()),
+                        String.valueOf(passenger.getTrain_number()),
+                        passenger.getOnboard_station(),
+                        passenger.getDestination_station(),
+                        String.valueOf(passenger.getFamilySize())));
                 writer.newLine();
             }
         } catch (IOException e) {
-            System.out.println("An error occurred while updating passenger data.");
+            System.err.println("An error occurred while updating passenger data.");
             e.printStackTrace();
         }
     }
 
-    private static void showTrainPassengers() {
+    private void showTrainPassengers() {
         System.out.println("\nPassengers currently on the train:");
         if (trainPassengerList.isEmpty()) {
             System.out.println("No passengers on the train.");
@@ -175,7 +199,7 @@ public class TrainJourney {
         }
     }
 
-    public static Train findTrainByNumber(int trainNumber) {
+    private Train findTrainByNumber(int trainNumber) {
         for (Train train : trains) {
             if (train.getTrainNumber() == trainNumber) {
                 return train;
@@ -184,12 +208,7 @@ public class TrainJourney {
         return null; // Train not found
     }
 
-    private static void clearScreen() {
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
-    }
-
-    private static void pressEnterToContinue() {
+    private void pressEnterToContinue() {
         System.out.println("Press Enter to continue...");
         try {
             System.in.read();
@@ -198,43 +217,48 @@ public class TrainJourney {
         }
     }
 
-    public static boolean canBoardPassenger(Passenger passenger) {
+    public boolean canBoardPassenger(Passenger passenger) {
         Train train = findTrainByNumber(passenger.getTrain_number());
         if (train == null) {
             System.out.println("Train not found.");
             return false;
         }
-
-        String currentStation = train.getCurrentStation();
-        boolean movingForward = train.isMovingForward();
-        int onboardStationIndex = train.getStations().indexOf(passenger.getOnboard_station());
-        int currentStationIndex = train.getCurrentStationIndex();
-
-        System.out.println("Current Station: " + currentStation);
-        System.out.println("Passenger Onboard Station: " + passenger.getOnboard_station());
-        System.out.println("Moving Forward: " + movingForward);
-        System.out.println("Onboard Station Index: " + onboardStationIndex);
-        System.out.println("Current Station Index: " + currentStationIndex);
-
-        if (movingForward) {
-            if (onboardStationIndex > currentStationIndex) {
-                System.out.println("Passenger's onboard station is ahead of current station. Cannot board.");
-                return false;
-            }
-        } else {
-            if (onboardStationIndex < currentStationIndex) {
-                System.out.println("Passenger's onboard station is behind the current station. Cannot board.");
-                return false;
-            }
-        }
-
-        // Check if there is enough capacity on the train
-        int totalPassengers = getTotalPassengers(passenger.getTrain_number());
-        if (totalPassengers + passenger.getFamilySize() > train.getCapacity()) {
-            System.out.println("Not enough capacity. Total Passengers: " + totalPassengers + ", Capacity: " + train.getCapacity());
+        int onboardIndex = train.getStations().indexOf(passenger.getOnboard_station());
+        int destinationIndex = train.getStations().indexOf(passenger.getDestination_station());
+        if (onboardIndex == -1 || destinationIndex == -1 || onboardIndex >= destinationIndex) {
+            System.out.println("Passenger's onboard station is ahead of destination station. Cannot board.");
             return false;
         }
-
         return true;
+    }
+
+    public void addNewPassenger(String name, int trainNumber, String onboardStation, String destinationStation, int familySize) {
+        Passenger newPassenger = new Passenger(name, nextTicketNumber++, trainNumber, onboardStation, destinationStation, familySize);
+        passengerList.add(newPassenger);
+        updatePassengerFile();
+        System.out.println("New passenger added: " + newPassenger);
+    }
+
+    public void removePassenger(int ticketNumber) {
+        Iterator<Passenger> iterator = passengerList.iterator();
+        while (iterator.hasNext()) {
+            Passenger passenger = iterator.next();
+            if (passenger.getTicket_number() == ticketNumber) {
+                iterator.remove();
+                System.out.println("Passenger removed: " + passenger);
+                break;
+            }
+        }
+        updatePassengerFile();
+    }
+
+    private int getTotalPassengers(int trainNumber) {
+        int total = 0;
+        for (Passenger passenger : trainPassengerList) {
+            if (passenger.getTrain_number() == trainNumber) {
+                total += passenger.getFamilySize();
+            }
+        }
+        return total;
     }
 }

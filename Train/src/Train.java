@@ -36,23 +36,32 @@ public class Train {
     }
 
     public boolean move() {
-        if (movingForward) {
+        if (isMovingForward()) {
             if (currentStationIndex < stations.size() - 1) {
                 currentStationIndex++;
+                return true;
             } else {
-                movingForward = false;
-                currentStationIndex--;
+                // The train has reached the last station
+                setMovingForward(false);  // Change direction to backward
+                return false; // Indicates the final destination has been reached
             }
         } else {
             if (currentStationIndex > 0) {
                 currentStationIndex--;
+                return true;
             } else {
-                movingForward = true;
-                currentStationIndex++;
+                // The train has reached the first station
+                setMovingForward(true);  // Change direction to forward
+                return false; // Indicates the final destination has been reached
             }
         }
-        return false;
     }
+
+    public void setMovingForward(boolean movingForward) {
+        this.movingForward = movingForward;
+    }
+
+
 
     public boolean canPassengerCompleteJourney(Passenger passenger) {
         int onboardIndex = stations.indexOf(passenger.getOnboard_station());
@@ -64,7 +73,7 @@ public class Train {
         }
 
         // Simulate the journey
-        for (int i = onboardIndex; i <= destinationIndex; i++) {
+        for (int i = onboardIndex; i < destinationIndex; i++) {
             int currentStationCapacity = getCapacityAtStation(i);
             if (currentStationCapacity < passenger.getFamilySize()) {
                 return false; // Not enough capacity at this station
@@ -86,4 +95,28 @@ public class Train {
     public String toString() {
         return "Train Number: " + trainNumber + ", Capacity: " + capacity + ", Stations: " + stations + ", Current Station Index: " + currentStationIndex + ", Moving Forward: " + movingForward;
     }
+
+
+    public String getPreviousStation() {
+        int currentStationIndex = getCurrentStationIndex();
+
+        if (isMovingForward()) {
+            // If moving forward, the previous station is one index behind the current station
+            if (currentStationIndex > 0) {
+                return stations.get(currentStationIndex - 1);
+            } else {
+                // If the train is at the first station, there is no previous station
+                return "No previous station (at starting point)";
+            }
+        } else {
+            // If moving backward, the previous station is one index ahead (as we are moving backward)
+            if (currentStationIndex < stations.size() - 1) {
+                return stations.get(currentStationIndex + 1);
+            } else {
+                // If the train is at the last station, there is no previous station
+                return "No previous station (at final destination)";
+            }
+        }
+    }
+
 }

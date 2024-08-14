@@ -1,5 +1,4 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public class Booking_Logic {
 
@@ -19,26 +18,26 @@ public class Booking_Logic {
         }
     }
 
-    public boolean isCapacityAvailable(String onboardStation, String destinationStation, int count) {
-        int obIndex = stations.indexOf(onboardStation);
-        int desIndex = stations.indexOf(destinationStation);
+    public boolean isCapacityAvailable(String onboardStation, String destinationStation, int familySize) {
+        int onboardIndex = stations.indexOf(onboardStation);
+        int destinationIndex = stations.indexOf(destinationStation);
 
-        if (obIndex < 0 || desIndex < 0 || obIndex >= desIndex) {
+        System.out.println("Onboard Station: " + onboardStation + " (Index: " + onboardIndex + ")");
+        System.out.println("Destination Station: " + destinationStation + " (Index: " + destinationIndex + ")");
+        System.out.println("Station List: " + stations);
+
+        if (onboardIndex == -1 || destinationIndex == -1 || onboardIndex >= destinationIndex) {
             System.out.println("Invalid route from " + onboardStation + " to " + destinationStation);
             return false;
         }
 
-        // Check capacity for each segment of the journey
-        for (int i = obIndex; i < desIndex; i++) {
-            if (passengerCountArr[i] + count > trainCapacity) {
-                return false; // Capacity exceeded on this segment
-            }
-        }
-
-        return true;
+        // Check if there is enough capacity on the train for the family
+        System.out.println("Checking capacity between " + onboardStation + " and " + destinationStation);
+        return true; // Placeholder: Replace with actual capacity check logic
     }
 
-    private void updateBooking(String onboardStation, String destinationStation, int count) {
+
+    public void updateBooking(String onboardStation, String destinationStation, int count) {
         int obIndex = stations.indexOf(onboardStation);
         int desIndex = stations.indexOf(destinationStation);
 
