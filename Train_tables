@@ -1,0 +1,72 @@
+-- 1. TrainSetup Table
+CREATE TABLE TrainSetup (
+    train_no INT PRIMARY KEY,
+    stations_list TEXT,
+    train_capacity INT CHECK (train_capacity > 0)
+);
+
+-- 2. TrainSchedule Table
+CREATE TABLE TrainSchedule (
+    train_no INT,
+    trip_no INT CHECK (trip_no > 0),
+    trip_start_time TIME CHECK (trip_start_time BETWEEN '00:00:00' AND '23:59:59'),
+    trip_end_time TIME CHECK (trip_end_time > trip_start_time AND trip_end_time < '23:59:59'),
+    FOREIGN KEY (train_no) REFERENCES TrainSetup(train_no) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- 3. TrainTripLog Table
+CREATE TABLE TrainTripLog (
+    train_no INT,
+    trip_no INT CHECK (trip_no > 0),
+    trip_start_time TIME CHECK (trip_start_time IS NOT NULL),
+    trip_end_time TIME CHECK (trip_end_time IS NOT NULL),
+    log_date DATE CHECK (log_date IS NOT NULL),
+    FOREIGN KEY (train_no) REFERENCES TrainSetup(train_no) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- 4. TrainStations Table
+CREATE TABLE TrainStations (
+    train_no INT,
+    trip_no INT,
+    station_name VARCHAR(255),
+    available_seats INT CHECK (available_seats >= 0),
+    station_index INT CHECK (station_index >= 0),
+    FOREIGN KEY (train_no) REFERENCES TrainSetup(train_no) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (trip_no) REFERENCES TrainSchedule(trip_no) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (station_name) REFERENCES Stations(station_name) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- 5. TicketRecords Table
+CREATE TABLE TicketRecords (
+    ticket_no INT PRIMARY KEY,
+    passenger_name VARCHAR(255) NOT NULL,
+    train_no INT,
+    onboard_station VARCHAR(255),
+    destination_station VARCHAR(255),
+    passenger_count INT CHECK (passenger_count > 0),
+    onboard_date DATE CHECK (onboard_date IS NOT NULL),
+    trip_no INT,
+    booking_date DATE CHECK (booking_date IS NOT NULL),
+    ticket_status ENUM('booked', 'canceled', 'completed') CHECK (ticket_status IS NOT NULL),
+    UNIQUE (ticket_no, passenger_name),
+    FOREIGN KEY (train_no) REFERENCES TrainSetup(train_no) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (onboard_station) REFERENCES Stations(station_name) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (destination_station) REFERENCES Stations(station_name) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (trip_no) REFERENCES TrainSchedule(trip_no) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- 6. TrainJourney Table
+CREATE TABLE TrainJourney (
+    train_no INT,
+    current_station_name VARCHAR(255),
+    next_station_name VARCHAR(255),
+    current_passenger_count INT CHECK (current_passenger_count >= 0),
+    direction INT CHECK (direction IN (1, 2)),
+    FOREIGN KEY (train_no) REFERENCES TrainSetup(train_no) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (current_station_name) REFERENCES Stations(station_name) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (next_station_name) REFERENCES Stations(station_name) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+—————————————————————————————
+
+
